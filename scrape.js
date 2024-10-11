@@ -19,12 +19,12 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const scrapeValidator = async (pubkey) => {
   let browser = null;
   try {
-    browser = await puppeteer.launch({ headless: true });
+    browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
     const page = await browser.newPage();
     
     try {
       await page.goto(`https://alps.dill.xyz/validators?p=3&ps=25&pubkey=${pubkey}`);
-      await page.waitForSelector('.MuiGrid-root.MuiGrid-item.MuiGrid-grid-xs-1.css-1doag2i', { timeout: 3000 });
+      await page.waitForSelector('.MuiGrid-root.MuiGrid-item.MuiGrid-grid-xs-1.css-1doag2i', { timeout: 10000 });
     } catch (TimeoutError) {
       console.error('Error waiting for selector:', puppeteer.TimeoutError);
       await browser.close();
@@ -60,8 +60,10 @@ const processValidators = async () => {
   try {
     const [validators] = await pool.query('SELECT pubkey, balance FROM validator');
     console.log('Retrieved validators:', validators.length);
+	let index = 0;
 
     for (const validator of validators) {
+	console.log(`Processing index: ${index++}`);
       const { pubkey, balance: lastBalance } = validator;
       console.log(`Processing pubkey: ${pubkey}`);
       const newBalance = await scrapeValidator(pubkey);
@@ -92,7 +94,7 @@ const startScrapingLoop = async () => {
   setInterval(async () => {
     console.log('Restarting scraping process...');
     await processValidators();
-  }, 300000); // 300000 ms = 5 menit
+  }, 60000); // 300000 ms = 5 menit
 };
 
 // Jalankan proses scraping langsung
